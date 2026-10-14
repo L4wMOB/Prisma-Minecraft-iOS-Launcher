@@ -1087,6 +1087,89 @@ void registerOpenHandler(JNIEnv *env) {
     }
 }
 
+// ============================================================================
+// Closure-free GLFW callback dispatch.
+//
+// LWJGL hands GLFW callbacks to native code as libffi closure trampolines.
+// On some devices (e.g. A13 / iOS 18 jailbreak + PT_TRACE_ME JIT, where the
+// dylibs go through the dyld mmap bypass) the trampoline page that libffi
+// remaps is readable but NOT executable, so the very first call
+// (CallbackBridge_nativeSetInputReady -> GLFW_invoke_FramebufferSize) dies
+// with SIGBUS at <trampoline page>+0x40 (hs_err: BUS_ADRALN, code bytes
+// "adr x16,-0x4000; ldp x17,x16,[x16]; br x16").
+//
+// Fix: GLFW.java no longer passes a closure address down.  The nglfwSet*Callback
+// natives only receive a 0/1 flag and point GLFW_invoke_* at the plain C thunks
+// below, which live in this (signed, executable) binary and call back into
+// org.lwjgl.glfw.GLFW.internalInvoke*() through JNI.  All existing
+// GLFW_invoke_* call sites keep working unchanged.
+// ============================================================================
+static jmethodID ame_mid_Char, ame_mid_CharMods, ame_mid_CursorEnter, ame_mid_CursorPos,
+    ame_mid_FramebufferSize, ame_mid_Key, ame_mid_MouseButton, ame_mid_Scroll, ame_mid_WindowSize;
+
+static JNIEnv* ame_glfw_thunk_env(void) {
+    if (!vmGlfwClass || !runtimeJavaVMPtr) return NULL;
+    JNIEnv *env = NULL;
+    jint st = (*runtimeJavaVMPtr)->GetEnv(runtimeJavaVMPtr, (void **)&env, JNI_VERSION_1_4);
+    if (st == JNI_EDETACHED) {
+        if ((*runtimeJavaVMPtr)->AttachCurrentThreadAsDaemon(runtimeJavaVMPtr, (void **)&env, NULL) != JNI_OK) return NULL;
+    } else if (st != JNI_OK) {
+        return NULL;
+    }
+    return env;
+}
+
+static void ame_glfw_thunk_done(JNIEnv *env) {
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+    }
+}
+
+static jmethodID ame_glfw_resolve(JNIEnv *env, const char *name, const char *sig) {
+    jmethodID mid = (*env)->GetStaticMethodID(env, vmGlfwClass, name, sig);
+    if ((*env)->ExceptionCheck(env)) {
+        (*env)->ExceptionDescribe(env);
+        (*env)->ExceptionClear(env);
+        mid = NULL;
+    }
+    if (!mid) NSLog(@"[GLFWThunk] WARNING: GLFW.%s%s not found, callback dispatch disabled", name, sig);
+    return mid;
+}
+
+static void ame_glfw_resolve_dispatch(JNIEnv *env) {
+    ame_mid_Char            = ame_glfw_resolve(env, "internalInvokeChar",            "(JI)V");
+    ame_mid_CharMods        = ame_glfw_resolve(env, "internalInvokeCharMods",        "(JII)V");
+    ame_mid_CursorEnter     = ame_glfw_resolve(env, "internalInvokeCursorEnter",     "(JI)V");
+    ame_mid_CursorPos       = ame_glfw_resolve(env, "internalInvokeCursorPos",       "(JDD)V");
+    ame_mid_FramebufferSize = ame_glfw_resolve(env, "internalInvokeFramebufferSize", "(JII)V");
+    ame_mid_Key             = ame_glfw_resolve(env, "internalInvokeKey",             "(JIIII)V");
+    ame_mid_MouseButton     = ame_glfw_resolve(env, "internalInvokeMouseButton",     "(JIII)V");
+    ame_mid_Scroll          = ame_glfw_resolve(env, "internalInvokeScroll",          "(JDD)V");
+    ame_mid_WindowSize      = ame_glfw_resolve(env, "internalInvokeWindowSize",      "(JII)V");
+    NSLog(@"[GLFWThunk] closure-free GLFW callback dispatch ready");
+}
+
+#define AME_GLFW_THUNK(NAME, PARAMS, ...) \
+static void ame_glfw_thunk_##NAME PARAMS { \
+    JNIEnv *env = ame_glfw_thunk_env(); \
+    if (!env || !ame_mid_##NAME) return; \
+    (*env)->CallStaticVoidMethod(env, vmGlfwClass, ame_mid_##NAME, __VA_ARGS__); \
+    ame_glfw_thunk_done(env); \
+}
+
+AME_GLFW_THUNK(Char,            (void* window, unsigned int cp),                        (jlong)(intptr_t)window, (jint)cp)
+AME_GLFW_THUNK(CharMods,        (void* window, unsigned int cp, int mods),              (jlong)(intptr_t)window, (jint)cp, (jint)mods)
+AME_GLFW_THUNK(CursorEnter,     (void* window, int entered),                            (jlong)(intptr_t)window, (jint)entered)
+AME_GLFW_THUNK(CursorPos,       (void* window, double x, double y),                     (jlong)(intptr_t)window, (jdouble)x, (jdouble)y)
+AME_GLFW_THUNK(FramebufferSize, (void* window, int w, int h),                           (jlong)(intptr_t)window, (jint)w, (jint)h)
+AME_GLFW_THUNK(Key,             (void* window, int key, int scancode, int action, int mods), (jlong)(intptr_t)window, (jint)key, (jint)scancode, (jint)action, (jint)mods)
+AME_GLFW_THUNK(MouseButton,     (void* window, int button, int action, int mods),       (jlong)(intptr_t)window, (jint)button, (jint)action, (jint)mods)
+AME_GLFW_THUNK(Scroll,          (void* window, double dx, double dy),                   (jlong)(intptr_t)window, (jdouble)dx, (jdouble)dy)
+AME_GLFW_THUNK(WindowSize,      (void* window, int w, int h),                           (jlong)(intptr_t)window, (jint)w, (jint)h)
+
+#undef AME_GLFW_THUNK
+
 // JNI_OnLoad
 void JNI_OnLoadGLFW() {
     if (runtimeJNIEnvPtr == NULL) {
@@ -1109,6 +1192,7 @@ void JNI_OnLoadGLFW() {
         (*runtimeJNIEnvPtr)->ExceptionClear(runtimeJNIEnvPtr);
         method_internalWindowSizeChanged = NULL;
     }
+    ame_glfw_resolve_dispatch(runtimeJNIEnvPtr);
     jfieldID field_keyDownBuffer = (*runtimeJNIEnvPtr)->GetStaticFieldID(runtimeJNIEnvPtr, vmGlfwClass, "keyDownBuffer", "Ljava/nio/ByteBuffer;");
     if ((*runtimeJNIEnvPtr)->ExceptionOccurred(runtimeJNIEnvPtr)) {
         (*runtimeJNIEnvPtr)->ExceptionDescribe(runtimeJNIEnvPtr);
@@ -1146,11 +1230,13 @@ void JNI_OnUnload(JavaVM* vm, void* reserved) {
     runtimeJNIEnvPtr = NULL;
 }
 
+// callbackptr is now just a 0/1 "callback installed" flag (see GLFW.java); the
+// real callback object lives on the Java side.  Return 0: there is no native
+// closure to hand back (returning a thunk address would crash Callback.get()).
 #define ADD_CALLBACK_WWIN(NAME) \
 JNIEXPORT jlong JNICALL Java_org_lwjgl_glfw_GLFW_nglfwSet##NAME##Callback(JNIEnv * env, jclass cls, jlong window, jlong callbackptr) { \
-    void** oldCallback = (void**) &GLFW_invoke_##NAME; \
-    GLFW_invoke_##NAME = (GLFW_invoke_##NAME##_func*) (uintptr_t) callbackptr; \
-    return (jlong) (uintptr_t) *oldCallback; \
+    GLFW_invoke_##NAME = callbackptr ? (GLFW_invoke_##NAME##_func*) ame_glfw_thunk_##NAME : NULL; \
+    return 0; \
 }
 
 ADD_CALLBACK_WWIN(Char)
@@ -1161,7 +1247,6 @@ ADD_CALLBACK_WWIN(FramebufferSize)
 ADD_CALLBACK_WWIN(Key)
 ADD_CALLBACK_WWIN(MouseButton)
 ADD_CALLBACK_WWIN(Scroll)
-ADD_CALLBACK_WWIN(WindowPos)
 ADD_CALLBACK_WWIN(WindowSize)
 
 #undef ADD_CALLBACK_WWIN
