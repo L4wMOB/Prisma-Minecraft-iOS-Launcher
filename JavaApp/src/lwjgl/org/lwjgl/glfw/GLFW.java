@@ -649,32 +649,48 @@ public class GLFW
     // Generated stub callback methods
     public static GLFWCharCallback glfwSetCharCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWcharfun") GLFWCharCallbackI cbfun) {
         GLFWCharCallback lastCallback = mGLFWCharCallback;
-        if (cbfun == null) mGLFWCharCallback = null;
-        else mGLFWCharCallback = GLFWCharCallback.createSafe(nglfwSetCharCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeChar() via JNI.
+        mDispatchChar = cbfun;
+        nglfwSetCharCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWCharCallback = cbfun == null ? null : GLFWCharCallback.create(cbfun);
 
         return lastCallback;
     }
 
     public static GLFWCharModsCallback glfwSetCharModsCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWcharmodsfun") GLFWCharModsCallbackI cbfun) {
         GLFWCharModsCallback lastCallback = mGLFWCharModsCallback;
-        if (cbfun == null) mGLFWCharModsCallback = null;
-        else mGLFWCharModsCallback = GLFWCharModsCallback.createSafe(nglfwSetCharModsCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeCharMods() via JNI.
+        mDispatchCharMods = cbfun;
+        nglfwSetCharModsCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWCharModsCallback = cbfun == null ? null : GLFWCharModsCallback.create(cbfun);
 
         return lastCallback;
     }
 
     public static GLFWCursorEnterCallback glfwSetCursorEnterCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWcursorenterfun") GLFWCursorEnterCallbackI cbfun) {
         GLFWCursorEnterCallback lastCallback = mGLFWCursorEnterCallback;
-        if (cbfun == null) mGLFWCursorEnterCallback = null;
-        else mGLFWCursorEnterCallback = GLFWCursorEnterCallback.createSafe(nglfwSetCursorEnterCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeCursorEnter() via JNI.
+        mDispatchCursorEnter = cbfun;
+        nglfwSetCursorEnterCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWCursorEnterCallback = cbfun == null ? null : GLFWCursorEnterCallback.create(cbfun);
 
         return lastCallback;
     }
 
     public static GLFWCursorPosCallback glfwSetCursorPosCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWcursorposfun") GLFWCursorPosCallbackI cbfun) {
         GLFWCursorPosCallback lastCallback = mGLFWCursorPosCallback;
-        if (cbfun == null) mGLFWCursorPosCallback = null;
-        else mGLFWCursorPosCallback = GLFWCursorPosCallback.createSafe(nglfwSetCursorPosCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeCursorPos() via JNI.
+        mDispatchCursorPos = cbfun;
+        nglfwSetCursorPosCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWCursorPosCallback = cbfun == null ? null : GLFWCursorPosCallback.create(cbfun);
 
         return lastCallback;
     }
@@ -697,8 +713,12 @@ public class GLFW
 
     public static GLFWFramebufferSizeCallback glfwSetFramebufferSizeCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWframebuffersizefun") GLFWFramebufferSizeCallbackI cbfun) {
         GLFWFramebufferSizeCallback lastCallback = mGLFWFramebufferSizeCallback;
-        if (cbfun == null) mGLFWFramebufferSizeCallback = null;
-        else mGLFWFramebufferSizeCallback = GLFWFramebufferSizeCallback.createSafe(nglfwSetFramebufferSizeCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeFramebufferSize() via JNI.
+        mDispatchFramebufferSize = cbfun;
+        nglfwSetFramebufferSizeCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWFramebufferSizeCallback = cbfun == null ? null : GLFWFramebufferSizeCallback.create(cbfun);
 
         return lastCallback;
     }
@@ -713,8 +733,12 @@ public class GLFW
 
     public static GLFWKeyCallback glfwSetKeyCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWkeyfun") GLFWKeyCallbackI cbfun) {
         GLFWKeyCallback lastCallback = mGLFWKeyCallback;
-        if (cbfun == null) mGLFWKeyCallback = null;
-        else mGLFWKeyCallback = GLFWKeyCallback.createSafe(nglfwSetKeyCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeKey() via JNI.
+        mDispatchKey = cbfun;
+        nglfwSetKeyCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWKeyCallback = cbfun == null ? null : GLFWKeyCallback.create(cbfun);
 
         return lastCallback;
     }
@@ -729,16 +753,24 @@ public class GLFW
 
     public static GLFWMouseButtonCallback glfwSetMouseButtonCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWmousebuttonfun") GLFWMouseButtonCallbackI cbfun) {
         GLFWMouseButtonCallback lastCallback = mGLFWMouseButtonCallback;
-        if (cbfun == null) mGLFWMouseButtonCallback = null;
-        else mGLFWMouseButtonCallback = GLFWMouseButtonCallback.createSafe(nglfwSetMouseButtonCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeMouseButton() via JNI.
+        mDispatchMouseButton = cbfun;
+        nglfwSetMouseButtonCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWMouseButtonCallback = cbfun == null ? null : GLFWMouseButtonCallback.create(cbfun);
 
         return lastCallback;
     }
 
     public static GLFWScrollCallback glfwSetScrollCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWscrollfun") GLFWScrollCallbackI cbfun) {
         GLFWScrollCallback lastCallback = mGLFWScrollCallback;
-        if (cbfun == null) mGLFWScrollCallback = null;
-        else mGLFWScrollCallback = GLFWScrollCallback.createSafe(nglfwSetScrollCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeScroll() via JNI.
+        mDispatchScroll = cbfun;
+        nglfwSetScrollCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWScrollCallback = cbfun == null ? null : GLFWScrollCallback.create(cbfun);
 
         return lastCallback;
     }
@@ -800,8 +832,12 @@ public class GLFW
 
     public static GLFWWindowSizeCallback glfwSetWindowSizeCallback(@NativeType("GLFWwindow *") long window, @Nullable @NativeType("GLFWwindowsizefun") GLFWWindowSizeCallbackI cbfun) {
         GLFWWindowSizeCallback lastCallback = mGLFWWindowSizeCallback;
-        if (cbfun == null) mGLFWWindowSizeCallback = null;
-        else mGLFWWindowSizeCallback = GLFWWindowSizeCallback.createSafe(nglfwSetWindowSizeCallback(window, memAddressSafe(cbfun)));
+        // iOS: never hand a libffi closure trampoline to native code (its page is not
+        // executable on some devices -> SIGBUS). Native side only gets a 0/1 flag and
+        // calls back into GLFW.internalInvokeWindowSize() via JNI.
+        mDispatchWindowSize = cbfun;
+        nglfwSetWindowSizeCallback(window, cbfun == null ? 0L : 1L);
+        mGLFWWindowSizeCallback = cbfun == null ? null : GLFWWindowSizeCallback.create(cbfun);
 
         return lastCallback;
     }
@@ -1140,6 +1176,62 @@ public class GLFW
             for (Long ptr : mGLFWWindowMap.keySet()) callJV(ptr, Functions.PumpEvents);
         }
         callV(Functions.RewindEvents);
+    }
+
+    // ---- iOS closure-free callback dispatch (called from native via JNI) ----
+    private static volatile GLFWCharCallbackI mDispatchChar;
+    private static volatile GLFWCharModsCallbackI mDispatchCharMods;
+    private static volatile GLFWCursorEnterCallbackI mDispatchCursorEnter;
+    private static volatile GLFWCursorPosCallbackI mDispatchCursorPos;
+    private static volatile GLFWFramebufferSizeCallbackI mDispatchFramebufferSize;
+    private static volatile GLFWKeyCallbackI mDispatchKey;
+    private static volatile GLFWMouseButtonCallbackI mDispatchMouseButton;
+    private static volatile GLFWScrollCallbackI mDispatchScroll;
+    private static volatile GLFWWindowSizeCallbackI mDispatchWindowSize;
+
+    public static void internalInvokeChar(long window, int codepoint) {
+        GLFWCharCallbackI cb = mDispatchChar;
+        if (cb != null) cb.invoke(window, codepoint);
+    }
+
+    public static void internalInvokeCharMods(long window, int codepoint, int mods) {
+        GLFWCharModsCallbackI cb = mDispatchCharMods;
+        if (cb != null) cb.invoke(window, codepoint, mods);
+    }
+
+    public static void internalInvokeCursorEnter(long window, int entered) {
+        GLFWCursorEnterCallbackI cb = mDispatchCursorEnter;
+        if (cb != null) cb.invoke(window, entered != 0);
+    }
+
+    public static void internalInvokeCursorPos(long window, double x, double y) {
+        GLFWCursorPosCallbackI cb = mDispatchCursorPos;
+        if (cb != null) cb.invoke(window, x, y);
+    }
+
+    public static void internalInvokeFramebufferSize(long window, int w, int h) {
+        GLFWFramebufferSizeCallbackI cb = mDispatchFramebufferSize;
+        if (cb != null) cb.invoke(window, w, h);
+    }
+
+    public static void internalInvokeKey(long window, int key, int scancode, int action, int mods) {
+        GLFWKeyCallbackI cb = mDispatchKey;
+        if (cb != null) cb.invoke(window, key, scancode, action, mods);
+    }
+
+    public static void internalInvokeMouseButton(long window, int button, int action, int mods) {
+        GLFWMouseButtonCallbackI cb = mDispatchMouseButton;
+        if (cb != null) cb.invoke(window, button, action, mods);
+    }
+
+    public static void internalInvokeScroll(long window, double dx, double dy) {
+        GLFWScrollCallbackI cb = mDispatchScroll;
+        if (cb != null) cb.invoke(window, dx, dy);
+    }
+
+    public static void internalInvokeWindowSize(long window, int w, int h) {
+        GLFWWindowSizeCallbackI cb = mDispatchWindowSize;
+        if (cb != null) cb.invoke(window, w, h);
     }
 
     public static void internalWindowSizeChanged(long window, int w, int h) {
